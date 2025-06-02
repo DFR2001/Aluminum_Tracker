@@ -1,11 +1,12 @@
 from flask import Flask, request
 import requests
+import os
 
 app = Flask(__name__)
 
 # CONFIG
-SUPABASE_URL = "https://your-project.supabase.co"
-SUPABASE_KEY = "your-anon-key"
+SUPABASE_URL = "https://wobhphzjaxyoqooiqfcp.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvYmhwaHpqYXh5b3Fvb2lxZmNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg4Njk2MzEsImV4cCI6MjA2NDQ0NTYzMX0.kkbG9fvJ9iFGjG6yTIUdVroFZZdBjHx9_IONE_MShtI"
 HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
@@ -62,4 +63,6 @@ def scan():
             return f"❌ Failed to update project: {res.text}", 500
 
 if __name__ == "__main__":
-    app.run()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
