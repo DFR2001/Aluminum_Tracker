@@ -44,3 +44,8 @@ def scan():
         return f"✅ Frame {frame_id} marked as Completed"
     else:
         return f"❌ Failed to update frame: {res.text}", 500
+        
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port)
+
