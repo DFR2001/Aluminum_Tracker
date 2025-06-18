@@ -1,9 +1,14 @@
-from flask import request, jsonify
+from flask import Flask, request, jsonify
 from supabase import create_client
 import os
 
-# Init Supabase
-supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+# === Initialize Flask App ===
+app = Flask(__name__)
+
+# === Initialize Supabase ===
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 @app.route("/scan")
 def scan_qr():
