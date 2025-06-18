@@ -1,51 +1,31 @@
-from flask import Flask, request
-import requests
+from flask import request, jsonify
+from supabase import create_client
 import os
 
-app = Flask(__name__)
-
-# CONFIG
-SUPABASE_URL = "https://wobhphzjaxyoqooiqfcp.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvYmhwaHpqYXh5b3Fvb2lxZmNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg4Njk2MzEsImV4cCI6MjA2NDQ0NTYzMX0.kkbG9fvJ9iFGjG6yTIUdVroFZZdBjHx9_IONE_MShtI"
-HEADERS = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json"
-}
+# Init Supabase
+supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
 @app.route("/scan")
-def scan():
-    project = request.args.get("project")
-    frame = request.args.get("frame")
+def scan_qr():
+    project_id = request.args.get("project")
+    frame_code = request.args.get("frame")
+    done_flag = request.args.get("done")
 
-    if not project:
-        return "❌ Missing project ID", 400
+    if not project_id or not frame_code or done_flag != "true":
+        return "Invalid QR code parameters", 400
 
-    # === If only project QR is scanned ===
-    if not frame:
-        res = requests.patch(
-            f"{SUPABASE_URL}/rest/v1/projects?project_id=eq.{project}",
-            headers=HEADERS,
-            json={"status": "In Progress"}
-        )
-        if res.ok:
-            return f"✅ Project {project} marked as In Progress"
-        else:
-            return f"❌ Failed to update project: {res.text}", 500
+    # === Update frame progress ===
+    frame_id = f"{project_id}-{frame_code}"
+    supabase.table("frames").update({
+        "progress": "Done"
+    }).eq("frame_id", frame_id).execute()
 
-    # === If frame QR is scanned ===
-    frame_id = f"{project}-{frame}"
-    res = requests.patch(
-        f"{SUPABASE_URL}/rest/v1/frames?frame_id=eq.{frame_id}",
-        headers=HEADERS,
-        json={"status": "Completed"}
-    )
-    if res.ok:
-        return f"✅ Frame {frame_id} marked as Completed"
-    else:
-        return f"❌ Failed to update frame: {res.text}", 500
-        
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", "5000"))
-    app.run(host="0.0.0.0", port=port)
+    # === Check if all frames are Done ===
+    response = supabase.table("frames").select("progress").eq("project_id", project_id).execute()
+    progresses = [r["progress"] for r in response.data]
+    if progresses and all(p == "Done" for p in progresses):
+        supabase.table("projects").update({
+            "status": "Completed"
+        }).eq("project_id", project_id).execute()
 
+    return f"✅ Frame {frame_code} marked as done!", 200
