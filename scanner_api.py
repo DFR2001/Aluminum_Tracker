@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from supabase import create_client
 import os
+from datetime import datetime
 
 # === Initialize Flask App ===
 app = Flask(__name__)
@@ -19,13 +20,16 @@ def scan_qr():
     if not project_id or not frame_code or done_flag != "true":
         return "Invalid QR code parameters", 400
 
-    # === Update frame progress ===
     frame_id = f"{project_id}-{frame_code}"
+    now_utc = datetime.utcnow().isoformat()
+
+    # === Update frame with progress + timestamp ===
     supabase.table("frames").update({
-        "progress": "Done"
+        "progress": "Done",
+        "scanned_at": now_utc
     }).eq("frame_id", frame_id).execute()
 
-    # === Check if all frames are Done ===
+    # === If all frames in the project are Done, mark project Completed ===
     response = supabase.table("frames").select("progress").eq("project_id", project_id).execute()
     progresses = [r["progress"] for r in response.data]
     if progresses and all(p == "Done" for p in progresses):
@@ -33,7 +37,8 @@ def scan_qr():
             "status": "Completed"
         }).eq("project_id", project_id).execute()
 
-    return f"✅ Frame {frame_code} marked as done!", 200
+    return f"✅ Frame {frame_code} marked as done at {now_utc}", 200
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5000"))
